@@ -19,7 +19,7 @@ function main() {
   let canvasMgr = new CanvasManager(pixelGrid, canvas);
 
   canvasMgr.scale = 10;
-  canvasMgr.minScale = 5;
+  canvasMgr.minScale = 2;
   canvasMgr.maxScale = 50;
   canvasMgr.draw();
 
