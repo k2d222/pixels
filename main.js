@@ -7,7 +7,7 @@ const GRID_H = 500;
 
 function main() {
 
-  createButtons();
+  // createButtons();
 
   let $canvas = $('canvas');
   let canvas = $canvas.get(0);
