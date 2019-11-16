@@ -1,7 +1,7 @@
 export class PixelGrid {
 
-  sizeX; sizeY;
-  pixels;
+  // sizeX; sizeY;
+  // pixels;
 
   constructor(sizeX, sizeY) {
     this.sizeX = sizeX;
@@ -36,14 +36,14 @@ PixelGrid.prototype.getPixelColor = function(x, y) {
 
 export class CanvasManager {
 
-  dragLastX; dragLastY;
-  posX; posY;
-  scale; scaleMin; scaleMax;
-  canvas; $canvas; ctx;
-  grid;
-  touchDistance;
-  drawFrameLastID;
-  drawLast;
+  // dragLastX; dragLastY;
+  // posX; posY;
+  // scale; scaleMin; scaleMax;
+  // canvas; $canvas; ctx;
+  // grid;
+  // touchDistance;
+  // drawFrameLastID;
+  // drawLast;
 
   constructor(grid, canvas) {
     this.grid = grid;
@@ -123,7 +123,6 @@ CanvasManager.prototype._touchmove = function(e) {
     let distY = e.touches[0].clientY - e.touches[1].clientY;
     let distance = Math.sqrt(distX*distX + distY*distY);
     let delta = (distance - this.touchDistance) / this.scale * 0.1;
-    console.log(delta, posX, posY, this.scale);
     this._zoom(delta, posX, posY);
     this.touchDistance = distance;
   }
