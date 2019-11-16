@@ -132,7 +132,8 @@ CanvasManager.prototype._touchmove = function(e) {
     let distX = e.touches[0].clientX - e.touches[1].clientX;
     let distY = e.touches[0].clientY - e.touches[1].clientY;
     let distance = Math.sqrt(distX*distX + distY*distY);
-    let delta = (distance - this.touchDistance) / this.scale * 0.1;
+    let delta = (distance / this.touchDistance) - 1;
+    if(delta === 0) return;
     this._zoom(delta, posX, posY);
     this.touchDistance = distance;
   }
@@ -178,6 +179,7 @@ CanvasManager.prototype._drag = function(x, y) {
 
 // ------------------------------------------------------------
 CanvasManager.prototype.draw = function() {
+  this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   this.ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
   this.ctx.setTransform(this.scale, 0, 0, this.scale, -this.posX * this.scale, -this.posY * this.scale);
   this.ctx.drawImage(this.gridCanvas, 0, 0);
