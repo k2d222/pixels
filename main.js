@@ -27,7 +27,7 @@ function main() {
   $(window).resize(function() {
     canvas.width = $canvas.width();
     canvas.height = $canvas.height();
-    canvasMgr.update();
+    canvasMgr.draw();
   });
 }
 
