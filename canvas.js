@@ -44,6 +44,7 @@ export class CanvasManager {
   // touchDistance;
   // drawFrameLastID;
   // drawLast;
+  // drawIdle;
 
   constructor(grid, canvas) {
     this.grid = grid;
@@ -57,11 +58,18 @@ export class CanvasManager {
     this.minScale = 1;
     this.maxScale = 10;
 
+    this.drawIdle = false;
+    this.drawQueue = [];
+    this.drawUpdatePerFrame = 100;
+
+    for (var i = 0; i < this.grid.sizeX; i++) {
+      this.drawQueue[i] = [];
+    }
+
     this._createListeners();
 
     this.draw();
   }
-
 }
 
 CanvasManager.prototype._createListeners = function() {
@@ -183,14 +191,17 @@ CanvasManager.prototype.update = function() {
 }
 
 CanvasManager.prototype.draw = function() {
+  this.drawIdle = false;
   cancelAnimationFrame(this._drawFrame);
   this.drawFrameLastID = requestAnimationFrame(() => {
     if(typeof this.drawLast === 'undefined') this._draw_not_optimized();
     else if(this.drawLast.scale === this.scale) this._draw_optimized_translation();
-    else if(this.drawLast.scale !== this.scale) this._draw_optimized_scale();
-    else { //  if(this.drawLast.x !== this.posX || this.drawLast.y !== this.posY)
-      this._draw_not_optimized();
-    }
+    // else if(this.drawLast.scale !== this.scale) this._draw_optimized_scale();
+    else this._draw_not_optimized();
+    this._draw_contour();
+    this.drawIdle = true;
+    this._draw_async();
+
 
     this.drawLast = {
       x: this.posX,
@@ -198,6 +209,32 @@ CanvasManager.prototype.draw = function() {
       scale: this.scale
     };
   });
+}
+
+CanvasManager.prototype._draw_contour = function() {
+  this.ctx.fillStyle = 'black';
+
+  let canvasW = this.canvas.width;
+  let canvasH = this.canvas.height;
+  let startX = this.posX * this.scale;
+  let startY = this.posY * this.scale;
+  let endX = this.posX * this.scale + canvasW;
+  let endY = this.posY * this.scale + canvasH;
+  let maxX = this.grid.sizeX * this.scale;
+  let maxY = this.grid.sizeY * this.scale;
+
+  if(startX < 0) {
+    this.ctx.fillRect(0, 0, -startX, canvasH);
+  }
+  if(startY < 0) {
+    this.ctx.fillRect(0, 0, canvasW, -startY);
+  }
+  if(endX > maxX) {
+    this.ctx.fillRect(canvasW - endX + maxX, 0, endX - maxX, canvasH);
+  }
+  if(endY > maxY) {
+    this.ctx.fillRect(0, canvasH - endY + maxY, canvasW, endY - maxY);
+  }
 }
 
 CanvasManager.prototype._draw_optimized_translation = function() {
@@ -218,22 +255,14 @@ CanvasManager.prototype._draw_optimized_translation = function() {
     let pixelY = gridToPixel(j, this.posY, this.scale);
 
     if(pixelX >= maxX || pixelY >= maxY || pixelX < minX || pixelY < minY) {
-      this.ctx.fillStyle = this.grid.getPixelColor(i, j);
-      this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
+      this._addToQueue(i, j);
     }
   });
 }
 
 CanvasManager.prototype._draw_optimized_scale = function() {
-  let canvasW = this.canvas.width;
-  let canvasH = this.canvas.height;
-
   let deltaX = (this.drawLast.x - this.posX) * this.scale;
   let deltaY = (this.drawLast.y - this.posY) * this.scale;
-  let maxX = ((canvasW / this.drawLast.scale) - this.drawLast.x + this.posX - 1) * this.scale;
-  let maxY = ((canvasH / this.drawLast.scale) - this.drawLast.y + this.posY - 1) * this.scale;
-  let minX = deltaX;
-  let minY = deltaY;
 
   this.ctx.resetTransform();
   this.ctx.translate(deltaX, deltaY);
@@ -244,11 +273,7 @@ CanvasManager.prototype._draw_optimized_scale = function() {
   this._foreachVisiblePixel((i, j) => {
     let pixelX = gridToPixel(i, this.posX, this.scale);
     let pixelY = gridToPixel(j, this.posY, this.scale);
-    if(pixelX >= maxX || pixelY >= maxY || pixelX < minX || pixelY < minY) {
-      this.ctx.fillStyle = this.grid.getPixelColor(i, j);
-      // this.ctx.fillStyle = 'red';
-      this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
-    }
+    this._addToQueue(i, j);
   });
 }
 
@@ -262,6 +287,36 @@ CanvasManager.prototype._draw_not_optimized = function() {
   });
 }
 
+CanvasManager.prototype._draw_async = function() {
+  let i = 0, j = 0;
+  let count = 0;
+
+  let draw = () => {
+    if(!this.drawIdle) return;
+
+    for (; i < this.drawQueue.length; i++) {
+      for (; j < this.drawQueue[i].length; j++) {
+        if(!this.drawQueue[i][j]) continue;
+        delete this.drawQueue[i][j];
+
+        let pixelX = gridToPixel(i, this.posX, this.scale);
+        let pixelY = gridToPixel(j, this.posY, this.scale);
+        this.ctx.fillStyle = this.grid.getPixelColor(i, j);
+        this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
+
+        if(++count > this.drawUpdatePerFrame) {
+          count = 0;
+          requestAnimationFrame(draw);
+          return;
+        }
+
+      }
+      j = 0;
+    }
+  }
+  draw();
+}
+
 // --------------- utils ------------------------------
 CanvasManager.prototype._foreachVisiblePixel = function(callback) {
   let canvasW = this.canvas.width;
@@ -271,7 +326,7 @@ CanvasManager.prototype._foreachVisiblePixel = function(callback) {
   let lastX  = Math.ceil(this.posX + canvasW / this.scale);
   let lastY  = Math.ceil(this.posY + canvasH / this.scale);
 
-  let i, j;
+  let i = firstY, j;
 
   for (i = firstX; i < lastX; i++) {
     for (j = firstY; j < lastY; j++) {
@@ -280,11 +335,15 @@ CanvasManager.prototype._foreachVisiblePixel = function(callback) {
   }
 }
 
+CanvasManager.prototype._addToQueue = function(x, y) {
+  if(x < 0 || y < 0 || x >= this.grid.sizeX || y >= this.grid.sizeY) return;
+  this.drawQueue[x][y] = true;
+}
 
 
 function gridToPixel(position, origin, scale) {
   return (position - origin) * scale;
 }
-function PixelToGrid(position, origin, scale) {
+function pixelToGrid(position, origin, scale) {
   return position / scale + origin;
 }
