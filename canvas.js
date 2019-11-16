@@ -49,7 +49,8 @@ export class CanvasManager {
     this.grid = grid;
     this.canvas = canvas;
     this.$canvas = $(canvas);
-    this.ctx = canvas.getContext('2d', { alpha: false });
+    this.ctx = canvas.getContext('2d', { alpha: false});
+    this.ctx.imageSmoothingEnabled = false;
 
     this.posX = this.posY = 0;
     this.scale = 1;
@@ -167,24 +168,41 @@ CanvasManager.prototype._drag = function(x, y) {
   this.draw();
 }
 
+// ------------------------------------------------------------
+
+CanvasManager.prototype.update = function() {
+  cancelAnimationFrame(this._drawFrame);
+  this.drawFrameLastID = requestAnimationFrame(() => {
+    this._draw_not_optimized();
+    this.drawLast = {
+      x: this.posX,
+      y: this.posY,
+      scale: this.scale
+    };
+  });
+}
+
 CanvasManager.prototype.draw = function() {
   cancelAnimationFrame(this._drawFrame);
-  this.drawFrameLastID = requestAnimationFrame( this._drawFrame.bind(this) );
+  this.drawFrameLastID = requestAnimationFrame(() => {
+    if(typeof this.drawLast === 'undefined') this._draw_not_optimized();
+    else if(this.drawLast.scale === this.scale) this._draw_optimized_translation();
+    else if(this.drawLast.scale !== this.scale) this._draw_optimized_scale();
+    else { //  if(this.drawLast.x !== this.posX || this.drawLast.y !== this.posY)
+      this._draw_not_optimized();
+    }
+
+    this.drawLast = {
+      x: this.posX,
+      y: this.posY,
+      scale: this.scale
+    };
+  });
 }
 
 CanvasManager.prototype._draw_optimized_translation = function() {
   let canvasW = this.canvas.width;
   let canvasH = this.canvas.height;
-
-  let firstX = Math.floor(this.posX);
-  let firstY = Math.floor(this.posY);
-  let lastX  = Math.ceil(this.posX + canvasW / this.scale);
-  let lastY  = Math.ceil(this.posY + canvasH / this.scale);
-
-  let visibleCountX = lastX - firstX;
-  let visibleCountY = lastY - firstY;
-
-  let i, j;
 
   let deltaX = (this.drawLast.x - this.posX) * this.scale;
   let deltaY = (this.drawLast.y - this.posY) * this.scale;
@@ -195,52 +213,78 @@ CanvasManager.prototype._draw_optimized_translation = function() {
 
   this.ctx.drawImage(this.canvas, deltaX, deltaY);
 
-  for (i = 0; i < visibleCountX; i++) { // TODO optimize this
-    for (j = 0; j < visibleCountY; j++) {
+  this._foreachVisiblePixel((i, j) => {
+    let pixelX = gridToPixel(i, this.posX, this.scale);
+    let pixelY = gridToPixel(j, this.posY, this.scale);
 
-      let pixelX = (firstX + i - this.posX) * this.scale;
-      let pixelY = (firstY + j - this.posY) * this.scale;
-
-      if(pixelX >= maxX || pixelY >= maxY || pixelX < minX || pixelY < minY) {
-        this.ctx.fillStyle = this.grid.getPixelColor(firstX + i, firstY + j);
-        this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
-      }
+    if(pixelX >= maxX || pixelY >= maxY || pixelX < minX || pixelY < minY) {
+      this.ctx.fillStyle = this.grid.getPixelColor(i, j);
+      this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
     }
-  }
+  });
 }
 
-CanvasManager.prototype._draw_not_optimized = function() {
+CanvasManager.prototype._draw_optimized_scale = function() {
   let canvasW = this.canvas.width;
   let canvasH = this.canvas.height;
 
+  let deltaX = (this.drawLast.x - this.posX) * this.scale;
+  let deltaY = (this.drawLast.y - this.posY) * this.scale;
+  let maxX = ((canvasW / this.drawLast.scale) - this.drawLast.x + this.posX - 1) * this.scale;
+  let maxY = ((canvasH / this.drawLast.scale) - this.drawLast.y + this.posY - 1) * this.scale;
+  let minX = deltaX;
+  let minY = deltaY;
+
+  this.ctx.resetTransform();
+  this.ctx.translate(deltaX, deltaY);
+  this.ctx.scale(this.scale / this.drawLast.scale, this.scale / this.drawLast.scale);
+  this.ctx.drawImage(this.canvas, 0, 0);
+  this.ctx.resetTransform();
+
+  this._foreachVisiblePixel((i, j) => {
+    let pixelX = gridToPixel(i, this.posX, this.scale);
+    let pixelY = gridToPixel(j, this.posY, this.scale);
+    if(pixelX >= maxX || pixelY >= maxY || pixelX < minX || pixelY < minY) {
+      this.ctx.fillStyle = this.grid.getPixelColor(i, j);
+      // this.ctx.fillStyle = 'red';
+      this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
+    }
+  });
+}
+
+CanvasManager.prototype._draw_not_optimized = function() {
+
+  this._foreachVisiblePixel((i, j) => {
+    let pixelX = gridToPixel(i, this.posX, this.scale);
+    let pixelY = gridToPixel(j, this.posY, this.scale);
+    this.ctx.fillStyle = this.grid.getPixelColor(i, j);
+    this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
+  });
+}
+
+// --------------- utils ------------------------------
+CanvasManager.prototype._foreachVisiblePixel = function(callback) {
+  let canvasW = this.canvas.width;
+  let canvasH = this.canvas.height;
   let firstX = Math.floor(this.posX);
   let firstY = Math.floor(this.posY);
   let lastX  = Math.ceil(this.posX + canvasW / this.scale);
   let lastY  = Math.ceil(this.posY + canvasH / this.scale);
 
-  let visibleCountX = lastX - firstX;
-  let visibleCountY = lastY - firstY;
-
   let i, j;
 
-  for (i = 0; i < visibleCountX; i++) {
-    for (j = 0; j < visibleCountY; j++) {
-      let pixelX = (firstX + i - this.posX) * this.scale;
-      let pixelY = (firstY + j - this.posY) * this.scale;
-      this.ctx.fillStyle = this.grid.getPixelColor(firstX + i, firstY + j);
-      this.ctx.fillRect(pixelX, pixelY, this.scale, this.scale);
+  for (i = firstX; i < lastX; i++) {
+    for (j = firstY; j < lastY; j++) {
+      callback(i, j);
     }
   }
 }
 
-CanvasManager.prototype._drawFrame = function() {
-  if(typeof this.drawLast === 'undefined') this._draw_not_optimized();
-  else if(this.drawLast.scale === this.scale) this._draw_optimized_translation();
-  else this._draw_not_optimized();
 
-  this.drawLast = {
-    x: this.posX,
-    y: this.posY,
-    scale: this.scale
-  };
+
+function gridToPixel(position, origin, scale) {
+  return (position - origin) * scale;
+}
+function PixelToGrid(position, origin, scale) {
+  return position / scale + origin;
 }
