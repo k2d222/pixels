@@ -1,4 +1,5 @@
 import { PixelGrid, CanvasManager } from './canvas.js'
+import { PixelInterface } from './interface.js'
 
 $(document).ready(main);
 
@@ -7,7 +8,7 @@ const GRID_H = 500;
 
 function main() {
 
-  // createButtons();
+  let pixelInterface = new PixelInterface();
 
   let $canvas = $('canvas');
   let canvas = $canvas.get(0);
