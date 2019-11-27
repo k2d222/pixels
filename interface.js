@@ -1,7 +1,12 @@
 export class PixelInterface {
+  constructor() {
+    this.$interface = $('#interface');
+    this._createButtons();
+  }
+}
 
-constructor(){
-  let $interface = $('#interface');
+PixelInterface.prototype._createButtons = function() {
+
   let tabColor = [
     'black',
     'white',
@@ -25,8 +30,12 @@ constructor(){
   for (let color of tabColor) {
     let $button = $('<button></button>');
     $button.css('background-color', color);
-    $interface.append($button);
+    $button.click(buttonClick);
+    this.$interface.append($button);
   }
 }
 
+function buttonClick(e) {
+  $('#interface button').removeClass('selected');
+  $(this).addClass('selected');
 }

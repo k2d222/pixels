@@ -28,6 +28,7 @@ canvas {
   justify-content: center;
   align-items: end;
   padding: 1em;
+  overflow: auto;
 
   button {
     border:none;
@@ -40,6 +41,7 @@ canvas {
     outiline: 0;
     box-shadow: 0 5px 5px 2px rgba(0, 0, 0, .4);
     transition: all .5s;
+    flex-shrink: 0;
 
     &.selected {
       border: .2em solid white;
