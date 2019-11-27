@@ -1,7 +1,12 @@
 export class PixelInterface {
   constructor() {
+    if (!!PixelInterface.instance) {
+      return PixelInterface.instance;
+    }
+    PixelInterface.instance = this;
     this.$interface = $('#interface');
     this._createButtons();
+    return this;
   }
 }
 
@@ -9,7 +14,7 @@ PixelInterface.prototype._createButtons = function() {
 
   let tabColor = [
     'black',
-    'white',
+    'rgb(255,255,255)',
     '#CD2525',
     '#710101',
     '#F08310',
@@ -30,6 +35,7 @@ PixelInterface.prototype._createButtons = function() {
   for (let color of tabColor) {
     let $button = $('<button></button>');
     $button.css('background-color', color);
+    $button.data('color', color);
     $button.click(buttonClick);
     this.$interface.append($button);
   }
@@ -38,4 +44,9 @@ PixelInterface.prototype._createButtons = function() {
 function buttonClick(e) {
   $('#interface button').removeClass('selected');
   $(this).addClass('selected');
+}
+
+PixelInterface.prototype.getColor = function() {
+  let $button = $('#interface button.selected');
+  return $button.data('color');
 }

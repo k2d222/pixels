@@ -1,3 +1,6 @@
+import { PixelInterface } from './interface.js'
+
+
 export class PixelGrid {
 
   // sizeX; sizeY;
@@ -7,15 +10,23 @@ export class PixelGrid {
     this.sizeX = sizeX;
     this.sizeY = sizeY;
 
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = sizeX;
+    this.canvas.height = sizeY;
+    this.ctx = this.canvas.getContext('2d', { alpha:false });
+
     this.pixels = [];
 
     for (var i = 0; i < sizeX; i++) {
       this.pixels[i] = [];
       for (var j = 0; j < sizeY; j++) {
-        this.pixels[i][j] = [];
+        let col = [];
         for (var k = 0; k < 3; k++) { // RGB
-          this.pixels[i][j][k] = Math.floor( Math.random() * 256 );
+          col[k] = Math.floor( Math.random() * 256 );
         }
+        this.pixels[i][j] = `rgb(${col[0]}, ${col[1]}, ${col[2]})`;
+        this.ctx.fillStyle = this.pixels[i][j];
+        this.ctx.fillRect(i, j, 1, 1);
       }
     }
   }
@@ -26,8 +37,18 @@ PixelGrid.prototype.getPixelColor = function(x, y) {
     return 'black';
   }
   else {
-    let color = this.pixels[x][y];
-    return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+    return this.pixels[x][y];
+  }
+}
+
+PixelGrid.prototype.setPixelColor = function(x, y, color) {
+  if(x >= this.pixels.length || y >= this.pixels[0].length || x < 0 || y < 0) {
+    return false;
+  }
+  else {
+    this.pixels[x][y] = color;
+    this.ctx.fillStyle = this.pixels[x][y];
+    this.ctx.fillRect(x, y, 1, 1);
   }
 }
 
@@ -55,18 +76,6 @@ export class CanvasManager {
     this.minScale = 1;
     this.maxScale = 10;
 
-    this.gridCanvas = document.createElement('canvas');
-    this.gridCanvas.width = grid.sizeX;
-    this.gridCanvas.height = grid.sizeY;
-    let gridCtx = this.gridCanvas.getContext('2d', { alpha: false});
-
-    for (let i = 0; i < grid.sizeX; i++) {
-      for (let j = 0; j < grid.sizeY; j++) {
-        gridCtx.fillStyle = this.grid.getPixelColor(i, j);
-        gridCtx.fillRect(i, j, 1, 1);
-      }
-    }
-
     this._createListeners();
 
     this.draw();
@@ -76,10 +85,12 @@ export class CanvasManager {
 CanvasManager.prototype._createListeners = function() {
   let $canvas = $(canvas);
 
+  $canvas.on('click', (e) => this._click(e));
+
   $canvas.on('touchstart', (e) => { // mobile
     this._touchstart(e);
     $canvas.on('touchmove', (e) => this._touchmove(e));
-  })
+  });
   $canvas.on('touchend', () => {
     $canvas.off('touchmove');
   });
@@ -108,6 +119,21 @@ CanvasManager.prototype._wheel = function(e) {
   let direction = e.originalEvent.deltaY < 0 ? -1 : 1;
   this._zoom(0.1 * direction, e.clientX, e.clientY);
 }
+
+CanvasManager.prototype._click = function(e) {
+
+  let canvasX = e.clientX / this.$canvas.width() * this.canvas.width;
+  let canvasY = e.clientY / this.$canvas.height() * this.canvas.height;
+  if(Math.abs(this.dragStartX - canvasX) > 5 || Math.abs(this.dragStartY - canvasY) > 5) return;
+
+  let color = new PixelInterface().getColor();
+  let x = Math.floor(this.posX + canvasX / this.scale);
+  let y = Math.floor(this.posY + canvasY / this.scale);
+
+  this.grid.setPixelColor(x, y, color);
+  this.draw();
+}
+
 
 // ------------ mobile events --------------------------------
 CanvasManager.prototype._touchstart = function(e) {
@@ -160,8 +186,10 @@ CanvasManager.prototype._zoom = function(factor, clientX, clientY) {
 }
 
 CanvasManager.prototype._dragStart = function(x, y) {
-  this.dragLastX = x / this.$canvas.width() * this.canvas.width;
-  this.dragLastY = y / this.$canvas.height() * this.canvas.height;
+  this.dragStartX = x / this.$canvas.width() * this.canvas.width;
+  this.dragStartY = y / this.$canvas.height() * this.canvas.height;
+  this.dragLastX = this.dragStartX;
+  this.dragLastY = this.dragStartY;
 }
 
 CanvasManager.prototype._drag = function(x, y) {
@@ -183,5 +211,5 @@ CanvasManager.prototype.draw = function() {
   this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   this.ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
   this.ctx.setTransform(this.scale, 0, 0, this.scale, -this.posX * this.scale, -this.posY * this.scale);
-  this.ctx.drawImage(this.gridCanvas, 0, 0);
+  this.ctx.drawImage(this.grid.canvas, 0, 0);
 }
