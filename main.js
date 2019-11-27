@@ -3,8 +3,8 @@ import { PixelInterface } from './interface.js'
 
 $(document).ready(main);
 
-const GRID_W = 500;
-const GRID_H = 500;
+const GRID_W = 100;
+const GRID_H = 100;
 
 function main() {
 
@@ -16,8 +16,15 @@ function main() {
   canvas.width = $canvas.width();
   canvas.height = $canvas.height();
 
-  let pixelGrid = new PixelGrid(GRID_W, GRID_H);
+
+  let pixelGrid = new PixelGrid(GRID_W, GRID_H)
   let canvasMgr = new CanvasManager(pixelGrid, canvas);
+
+  pixelGrid.loadData()
+  .then(function() {
+    canvasMgr.draw();
+  });
+
 
   canvasMgr.scale = 10;
   canvasMgr.minScale = 2;

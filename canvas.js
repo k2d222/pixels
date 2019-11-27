@@ -15,22 +15,65 @@ export class PixelGrid {
     this.canvas.height = sizeY;
     this.ctx = this.canvas.getContext('2d', { alpha:false });
 
+    this.modified = [];
     this.pixels = [];
 
-    for (var i = 0; i < sizeX; i++) {
+    for (var i = 0; i < this.sizeX; i++) {
       this.pixels[i] = [];
-      for (var j = 0; j < sizeY; j++) {
-        let col = [];
-        for (var k = 0; k < 3; k++) { // RGB
-          col[k] = Math.floor( Math.random() * 256 );
-        }
-        this.pixels[i][j] = `rgb(${col[0]}, ${col[1]}, ${col[2]})`;
+      for (var j = 0; j < this.sizeY; j++) {
+        this.pixels[i][j] = 'grey';
         this.ctx.fillStyle = this.pixels[i][j];
         this.ctx.fillRect(i, j, 1, 1);
       }
     }
+
   }
 }
+
+PixelGrid.prototype.loadData = function() {
+  return new Promise( (resolve) => {
+    $.ajax({
+      dataType: "json",
+      url: 'server.php',
+      data: [],
+      success: (result) => {
+        this.pixels = result;
+        this.sizeX = result.length;
+        this.sizeY = result[0].length;
+        for (var i = 0; i < this.sizeX; i++) {
+          for (var j = 0; j < this.sizeY; j++) {
+            this.ctx.fillStyle = this.pixels[i][j];
+            this.ctx.fillRect(i, j, 1, 1);
+          }
+        }
+        resolve();
+      }
+    });
+  });
+};
+
+PixelGrid.prototype.saveData = function() {
+  let obj = {'data':JSON.stringify(this.modified)};
+  this.modified = [];
+  return new Promise( (resolve) => {
+    $.ajax({
+      type:'POST',
+      dataType: "json",
+      url: 'server.php',
+      data: obj,
+      success: (result) => {
+        this.pixels = result;
+        for (var i = 0; i < this.sizeX; i++) {
+          for (var j = 0; j < this.sizeY; j++) {
+            this.ctx.fillStyle = this.pixels[i][j];
+            this.ctx.fillRect(i, j, 1, 1);
+          }
+        }
+        resolve();
+      }
+    });
+  });
+};
 
 PixelGrid.prototype.getPixelColor = function(x, y) {
   if(x >= this.pixels.length || y >= this.pixels[0].length || x < 0 || y < 0) {
@@ -46,6 +89,7 @@ PixelGrid.prototype.setPixelColor = function(x, y, color) {
     return false;
   }
   else {
+    this.modified.push([x,y,color]);
     this.pixels[x][y] = color;
     this.ctx.fillStyle = this.pixels[x][y];
     this.ctx.fillRect(x, y, 1, 1);
@@ -84,6 +128,17 @@ export class CanvasManager {
 
 CanvasManager.prototype._createListeners = function() {
   let $canvas = $(canvas);
+
+  let resolved = true;
+  setInterval(() => {
+    if(resolved) {
+      resolved = false;
+      this.grid.saveData()
+      .then(() => {
+        resolved = true;
+      })
+    }
+  }, 1000)
 
   $canvas.on('click', (e) => this._click(e));
 
