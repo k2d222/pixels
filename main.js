@@ -1,5 +1,6 @@
 import { PixelGrid, CanvasManager } from './canvas.js'
 import { PixelInterface } from './interface.js'
+import { Server } from './server.js'
 
 $(document).ready(main);
 
@@ -20,10 +21,22 @@ function main() {
   let pixelGrid = new PixelGrid(GRID_W, GRID_H)
   let canvasMgr = new CanvasManager(pixelGrid, canvas);
 
-  pixelGrid.loadData()
-  .then(function() {
+  let server = new Server('pi.thissma.fr', 16400);
+  server.on('grid', (grid) => {
+    pixelGrid.load(grid);
     canvasMgr.draw();
   });
+  server.on('pixel', (pix) => {
+    pixelGrid.setPixelColor(pix[0], pix[1], pix[2], false);
+    canvasMgr.draw();
+  });
+  pixelGrid.onChange( (pix) => {
+    server.send('pixel', pix);
+  })
+  // pixelGrid.loadData()
+  // .then(function() {
+  //   canvasMgr.draw();
+  // });
 
 
   canvasMgr.scale = 10;

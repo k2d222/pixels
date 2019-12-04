@@ -15,8 +15,9 @@ export class PixelGrid {
     this.canvas.height = sizeY;
     this.ctx = this.canvas.getContext('2d', { alpha:false });
 
-    this.modified = [];
     this.pixels = [];
+
+    this.changeEvent = [];
 
     for (var i = 0; i < this.sizeX; i++) {
       this.pixels[i] = [];
@@ -30,72 +31,42 @@ export class PixelGrid {
   }
 }
 
-PixelGrid.prototype.loadData = function() {
-  return new Promise( (resolve) => {
-    $.ajax({
-      dataType: "json",
-      url: 'server.php',
-      data: [],
-      success: (result) => {
-        this.pixels = result;
-        this.sizeX = result.length;
-        this.sizeY = result[0].length;
-        for (var i = 0; i < this.sizeX; i++) {
-          for (var j = 0; j < this.sizeY; j++) {
-            this.ctx.fillStyle = this.pixels[i][j];
-            this.ctx.fillRect(i, j, 1, 1);
-          }
-        }
-        resolve();
-      }
-    });
-  });
-};
+PixelGrid.prototype.load = function(grid) {
+  this.pixels = grid;
+  this.sizeX = this.pixels.length;
+  this.sizeY = this.pixels[0].length;
 
-PixelGrid.prototype.saveData = function() {
-  let obj = {'data':JSON.stringify(this.modified)};
-  this.modified = [];
-  return new Promise( (resolve) => {
-    $.ajax({
-      type:'POST',
-      dataType: "json",
-      url: 'server.php',
-      data: obj,
-      success: (result) => {
-        this.pixels = result;
-        for (var i = 0; i < this.sizeX; i++) {
-          for (var j = 0; j < this.sizeY; j++) {
-            this.ctx.fillStyle = this.pixels[i][j];
-            this.ctx.fillRect(i, j, 1, 1);
-          }
-        }
-        resolve();
-      }
-    });
-  });
-};
-
-PixelGrid.prototype.getPixelColor = function(x, y) {
-  if(x >= this.pixels.length || y >= this.pixels[0].length || x < 0 || y < 0) {
-    return 'black';
-  }
-  else {
-    return this.pixels[x][y];
+  for (var i = 0; i < this.sizeX; i++) {
+    for (var j = 0; j < this.sizeY; j++) {
+      this.ctx.fillStyle = this._parseColor(this.pixels[i][j]);
+      this.ctx.fillRect(i, j, 1, 1);
+    }
   }
 }
 
-PixelGrid.prototype.setPixelColor = function(x, y, color) {
+PixelGrid.prototype.onChange = function(fn) {
+  this.changeEvent.push(fn);
+}
+
+PixelGrid.prototype._fireChange = function(data) {
+  for (let fn of this.changeEvent) fn(data);
+}
+
+PixelGrid.prototype.setPixelColor = function(x, y, color, fireChange=true) { // color is array of int [r, g, b]
   if(x >= this.pixels.length || y >= this.pixels[0].length || x < 0 || y < 0) {
     return false;
   }
   else {
-    this.modified.push([x,y,color]);
-    this.pixels[x][y] = color;
-    this.ctx.fillStyle = this.pixels[x][y];
+    this.ctx.fillStyle = this._parseColor(color);
     this.ctx.fillRect(x, y, 1, 1);
+    this.pixels[x][y] = color;
+    if(fireChange) this._fireChange([x,y,color]);
   }
 }
 
+PixelGrid.prototype._parseColor = function(c) {
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
 
 
 
@@ -128,17 +99,6 @@ export class CanvasManager {
 
 CanvasManager.prototype._createListeners = function() {
   let $canvas = $(canvas);
-
-  let resolved = true;
-  setInterval(() => {
-    if(resolved) {
-      resolved = false;
-      this.grid.saveData()
-      .then(() => {
-        resolved = true;
-      })
-    }
-  }, 1000)
 
   $canvas.on('click', (e) => this._click(e));
 

@@ -1,3 +1,5 @@
+import { RGBColor } from './rgbcolor.js'
+
 export class PixelInterface {
   constructor() {
     if (!!PixelInterface.instance) {
@@ -46,7 +48,8 @@ function buttonClick(e) {
   $(this).addClass('selected');
 }
 
-PixelInterface.prototype.getColor = function() {
+PixelInterface.prototype.getColor = function() { // returns as [r,g,b]
   let $button = $('#interface button.selected');
-  return $button.data('color');
+  let col = new RGBColor( $button.data('color') );
+  return [col.r, col.g, col.b];
 }
