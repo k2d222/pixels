@@ -53,15 +53,12 @@ PixelGrid.prototype._fireChange = function(data) {
 }
 
 PixelGrid.prototype.setPixelColor = function(x, y, color, fireChange=true) { // color is array of int [r, g, b]
-  if(x >= this.pixels.length || y >= this.pixels[0].length || x < 0 || y < 0) {
-    return false;
-  }
-  else {
-    this.ctx.fillStyle = this._parseColor(color);
-    this.ctx.fillRect(x, y, 1, 1);
-    this.pixels[x][y] = color;
-    if(fireChange) this._fireChange([x,y,color]);
-  }
+  x = x % this.sizeX;
+  y = y % this.sizeY;
+  this.ctx.fillStyle = this._parseColor(color);
+  this.ctx.fillRect(x, y, 1, 1);
+  this.pixels[x][y] = color;
+  if(fireChange) this._fireChange([x,y,color]);
 }
 
 PixelGrid.prototype._parseColor = function(c) {
@@ -193,8 +190,10 @@ CanvasManager.prototype._zoom = function(factor, clientX, clientY) {
 
   let zoom = (this.scale + delta) / this.scale;
 
-  this.posX += x / this.scale - x / (this.scale*zoom);
-  this.posY += y / this.scale - y / (this.scale*zoom);
+  this.move(
+    x / this.scale - x / (this.scale*zoom),
+    y / this.scale - y / (this.scale*zoom)
+  );
 
   this.scale += delta;
   this.draw();
@@ -214,17 +213,38 @@ CanvasManager.prototype._drag = function(x, y) {
   this.dragLastX = x / this.$canvas.width() * this.canvas.width;
   this.dragLastY = y / this.$canvas.height() * this.canvas.height;
 
-  this.posX -= deltaX / this.scale;
-  this.posY -= deltaY / this.scale;
-
+  this.move( -deltaX / this.scale, -deltaY / this.scale );
   this.draw();
 }
 
+CanvasManager.prototype.move = function(dx, dy) {
+  this.posX += dx;
+  this.posY += dy;
+  this.posX = this.posX % this.grid.sizeX;
+  this.posY = this.posY % this.grid.sizeY;
+  if(this.posX < 0) this.posX = this.grid.sizeX + this.posX;
+  if(this.posY < 0) this.posY = this.grid.sizeY + this.posY;
+}
+
 // ------------------------------------------------------------
+// CanvasManager.prototype.draw_single = function() {
+//   this.ctx.imageSmoothingEnabled = false;
+//   this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+//   this.ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
+//   this.ctx.setTransform(this.scale, 0, 0, this.scale, -this.posX * this.scale, -this.posY * this.scale);
+//   this.ctx.drawImage(this.grid.canvas, 0, 0);
+// }
+
 CanvasManager.prototype.draw = function() {
   this.ctx.imageSmoothingEnabled = false;
-  this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  this.ctx.setTransform(1, 0, 0, 1, 0, 0); // identity
   this.ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
-  this.ctx.setTransform(this.scale, 0, 0, this.scale, -this.posX * this.scale, -this.posY * this.scale);
-  this.ctx.drawImage(this.grid.canvas, 0, 0);
+  this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+
+  for (var i = -this.posX; i < this.canvas.width / this.scale; i+= this.grid.sizeX) {
+    for (var j = -this.posY; j < this.canvas.height / this.scale; j+= this.grid.sizeY) {
+      // console.log(i, j);
+      this.ctx.drawImage(this.grid.canvas, i, j);
+    }
+  }
 }
