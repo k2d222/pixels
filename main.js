@@ -4,9 +4,6 @@ import { Server } from './server.js'
 
 $(document).ready(main);
 
-const GRID_W = 100;
-const GRID_H = 100;
-
 function main() {
 
   let pixelInterface = new PixelInterface();
@@ -18,7 +15,7 @@ function main() {
   canvas.height = $canvas.height();
 
 
-  let pixelGrid = new PixelGrid(GRID_W, GRID_H)
+  let pixelGrid = new PixelGrid()
   let canvasMgr = new CanvasManager(pixelGrid, canvas);
 
   let server = new Server('pi.thissma.fr', 16400);
@@ -29,6 +26,9 @@ function main() {
   server.on('pixel', (pix) => {
     pixelGrid.setPixelColor(pix[0], pix[1], pix[2], false);
     canvasMgr.draw();
+  });
+  server.on('users', (count) => {
+    $('#users span').html(count);
   });
   pixelGrid.onChange( (pix) => {
     server.send('pixel', pix);

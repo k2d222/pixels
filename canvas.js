@@ -6,14 +6,13 @@ export class PixelGrid {
   // sizeX; sizeY;
   // pixels;
 
-  constructor(sizeX, sizeY) {
-    this.sizeX = sizeX;
-    this.sizeY = sizeY;
+  constructor() {
 
     this.canvas = document.createElement('canvas');
-    this.canvas.width = sizeX;
-    this.canvas.height = sizeY;
     this.ctx = this.canvas.getContext('2d', { alpha:false });
+
+    this.sizeX = this.canvas.width;
+    this.sizeY = this.canvas.height;
 
     this.pixels = [];
 
@@ -22,8 +21,8 @@ export class PixelGrid {
     for (var i = 0; i < this.sizeX; i++) {
       this.pixels[i] = [];
       for (var j = 0; j < this.sizeY; j++) {
-        this.pixels[i][j] = 'grey';
-        this.ctx.fillStyle = this.pixels[i][j];
+        this.pixels[i][j] = [100,100,100];
+        this.ctx.fillStyle = this._parseColor(this.pixels[i][j]);
         this.ctx.fillRect(i, j, 1, 1);
       }
     }
@@ -32,9 +31,12 @@ export class PixelGrid {
 }
 
 PixelGrid.prototype.load = function(grid) {
-  this.pixels = grid;
+  this.pixels = grid; // todo check integrity
   this.sizeX = this.pixels.length;
   this.sizeY = this.pixels[0].length;
+
+  this.canvas.width = this.sizeX;
+  this.canvas.height = this.sizeY;
 
   for (var i = 0; i < this.sizeX; i++) {
     for (var j = 0; j < this.sizeY; j++) {
