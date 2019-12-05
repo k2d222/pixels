@@ -16,7 +16,7 @@ PixelInterface.prototype._createButtons = function() {
 
   let tabColor = [
     'black',
-    'rgb(255,255,255)',
+    'white',
     '#CD2525',
     '#710101',
     '#F08310',
@@ -41,6 +41,7 @@ PixelInterface.prototype._createButtons = function() {
     $button.click(buttonClick);
     this.$interface.append($button);
   }
+  $('#interface button').eq(0).addClass('selected');
 }
 
 function buttonClick(e) {

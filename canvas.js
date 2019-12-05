@@ -57,6 +57,12 @@ PixelGrid.prototype._fireChange = function(data) {
 PixelGrid.prototype.setPixelColor = function(x, y, color, fireChange=true) { // color is array of int [r, g, b]
   x = x % this.sizeX;
   y = y % this.sizeY;
+  if(  this.pixels[x][y][0] === color[0]
+    && this.pixels[x][y][1] === color[1]
+    && this.pixels[x][y][2] === color[2]
+  ) {
+    return;
+  }
   this.ctx.fillStyle = this._parseColor(color);
   this.ctx.fillRect(x, y, 1, 1);
   this.pixels[x][y] = color;
@@ -90,9 +96,15 @@ export class CanvasManager {
     this.minScale = 1;
     this.maxScale = 10;
 
+    this.UUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+
     this._createListeners();
 
     this.draw();
+
   }
 }
 
@@ -103,30 +115,52 @@ CanvasManager.prototype._createListeners = function() {
 
   $canvas.on('touchstart', (e) => { // mobile
     this._touchstart(e);
-    $canvas.on('touchmove', (e) => this._touchmove(e));
+    $canvas.on('touchmove.'+this.UUID, (e) => this._touchmove(e));
   });
   $canvas.on('touchend', () => {
-    $canvas.off('touchmove');
+    $canvas.off('touchmove.'+this.UUID);
   });
 
   $canvas.on('mousedown', (e) => { // desktop
     this._mousedown(e);
-    $canvas.on('mousemove', (e) => this._mousemove(e));
+    $canvas.on('mousemove.'+this.UUID, (e) => this._mousemove(e));
   })
   $canvas.on('mouseup', () => {
-    $canvas.off('mousemove');
+    $canvas.off('mousemove.'+this.UUID);
   });
   $canvas.on('wheel', (e) => this._wheel(e));
 
+
+  let hover = false;
+  let x = 0;
+  let y = 0;
+
+  $canvas.on('mouseenter', () => hover = true);
+  $canvas.on('mouseleave', () => hover = false);
+  $canvas.on('mousemove', (e) => {
+    x = e.clientX;
+    y = e.clientY;
+  });
+
+  $(window).on('keydown', (e) => {
+    if( !hover ) return;
+    if(e.key === ' ') {
+      this._spacebar(x, y);
+    }
+  })
 }
 
 // ------------ desktop events --------------------------------
 CanvasManager.prototype._mousedown = function(e) {
-  this._dragStart(e.clientX, e.clientY);
+  let x = e.clientX / this.$canvas.width() * this.canvas.width;
+  let y =  e.clientY / this.$canvas.height() * this.canvas.height;
+  this._dragStart(x, y);
 }
 
 CanvasManager.prototype._mousemove = function(e) {
-  this._drag(e.clientX, e.clientY);
+  let x = e.clientX / this.$canvas.width() * this.canvas.width;
+  let y =  e.clientY / this.$canvas.height() * this.canvas.height;
+  this._drag(x, y);
 }
 
 CanvasManager.prototype._wheel = function(e) {
@@ -148,11 +182,26 @@ CanvasManager.prototype._click = function(e) {
   this.draw();
 }
 
+CanvasManager.prototype._spacebar = function(x, y) {
+
+  let canvasX = x / this.$canvas.width() * this.canvas.width;
+  let canvasY = y / this.$canvas.height() * this.canvas.height;
+
+  let color = new PixelInterface().getColor();
+  let i = Math.floor(this.posX + canvasX / this.scale);
+  let j = Math.floor(this.posY + canvasY / this.scale);
+
+  this.grid.setPixelColor(i, j, color);
+  this.draw();
+}
+
 
 // ------------ mobile events --------------------------------
 CanvasManager.prototype._touchstart = function(e) {
   if(e.touches.length === 1) {
-    this._dragStart(e.touches[0].clientX, e.touches[0].clientY);
+    let x = e.touches[0].clientX / this.$canvas.width() * this.canvas.width;
+    let y = e.touches[0].clientY / this.$canvas.height() * this.canvas.height;
+    this._dragStart(x, y);
   }
   else if(e.touches.length === 2) {
     let distX = e.touches[0].clientX - e.touches[1].clientX;
@@ -164,7 +213,9 @@ CanvasManager.prototype._touchstart = function(e) {
 CanvasManager.prototype._touchmove = function(e) {
   e.preventDefault();
   if(e.touches.length === 1) {
-    this._drag(e.touches[0].clientX, e.touches[0].clientY)
+    let x = e.touches[0].clientX / this.$canvas.width() * this.canvas.width;
+    let y = e.touches[0].clientY / this.$canvas.height() * this.canvas.height;
+    this._drag(x, y);
   }
   else if(e.touches.length === 2) {
     let posX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -202,18 +253,22 @@ CanvasManager.prototype._zoom = function(factor, clientX, clientY) {
 }
 
 CanvasManager.prototype._dragStart = function(x, y) {
-  this.dragStartX = x / this.$canvas.width() * this.canvas.width;
-  this.dragStartY = y / this.$canvas.height() * this.canvas.height;
+  this.dragStartX = x;
+  this.dragStartY = y;
   this.dragLastX = this.dragStartX;
   this.dragLastY = this.dragStartY;
+  this._dragTimestamp = Date.now();
 }
 
 CanvasManager.prototype._drag = function(x, y) {
-  let deltaX = x / this.$canvas.width() * this.canvas.width - this.dragLastX;
-  let deltaY = y / this.$canvas.height() * this.canvas.height - this.dragLastY;
 
-  this.dragLastX = x / this.$canvas.width() * this.canvas.width;
-  this.dragLastY = y / this.$canvas.height() * this.canvas.height;
+  if(Date.now() - this._dragTimestamp < 100) return;
+
+  let deltaX = x - this.dragLastX;
+  let deltaY = y - this.dragLastY;
+
+  this.dragLastX = x;
+  this.dragLastY = y;
 
   this.move( -deltaX / this.scale, -deltaY / this.scale );
   this.draw();

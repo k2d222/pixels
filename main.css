@@ -31,7 +31,6 @@ canvas {
   width: 3em;
   height: 3em;
   border-radius: .3em;
-  border: .4em solid white;
   margin: 0.5em;
   outiline: 0;
   box-shadow: 0 5px 5px 2px rgba(0, 0, 0, 0.4);
