@@ -147,6 +147,12 @@ CanvasManager.prototype._createListeners = function() {
     if(e.key === ' ') {
       this._spacebar(x, y);
     }
+    else if(e.key === '+') {
+      this._zoom(.5, x, y)
+    }
+    else if(e.key === '-') {
+      this._zoom(-.5, x, y)
+    }
   })
 }
 
