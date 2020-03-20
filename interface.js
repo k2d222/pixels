@@ -1,20 +1,7 @@
 import { RGBColor } from './rgbcolor.js'
 
-export class PixelInterface {
-  constructor() {
-    if (!!PixelInterface.instance) {
-      return PixelInterface.instance;
-    }
-    PixelInterface.instance = this;
-    this.$interface = $('#interface');
-    this._createButtons();
-    return this;
-  }
-}
-
-PixelInterface.prototype._createButtons = function() {
-
-  let tabColor = [
+const palettes = {
+  seb: [
     'black',
     'white',
     '#CD2525',
@@ -33,8 +20,63 @@ PixelInterface.prototype._createButtons = function() {
     '#530D0D',
     '#614300',
     '#808080',
-  ];
-  for (let color of tabColor) {
+  ],
+  sweetie: [
+    'black',
+    'white',
+    '#1a1c2c',
+    '#5d275d',
+    '#b13e53',
+    '#ef7d57',
+    '#ffcd75',
+    '#a7f070',
+    '#38b764',
+    '#257179',
+    '#29366f',
+    '#3b5dc9',
+    '#41a6f6',
+    '#73eff7',
+    '#f4f4f4',
+    '#94b0c2',
+    '#566c86',
+    '#333c57',
+  ],
+  default: [
+    '#e4a672',
+    '#b86f50',
+    '#743f39',
+    '#3f2832',
+    '#9e2835',
+    '#e53b44',
+    '#fb922b',
+    '#ffe762',
+    '#63c64d',
+    '#327345',
+    '#193d3f',
+    '#4f6781',
+    '#afbfd2',
+    '#ffffff',
+    '#2ce8f4',
+    '#0484d1',
+  ]
+}
+
+
+export class PixelInterface {
+  constructor() {
+    if (!!PixelInterface.instance) {
+      return PixelInterface.instance;
+    }
+    PixelInterface.instance = this;
+    this.$interface = $('#interface');
+    this.createPalette('default');
+    return this;
+  }
+}
+
+PixelInterface.prototype.createPalette = function(palette) {
+  const colors = palettes[palette];
+  for (let color of colors) {
     let $button = $('<button></button>');
     $button.css('background-color', color);
     $button.data('color', color);

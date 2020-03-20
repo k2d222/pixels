@@ -33,10 +33,6 @@ function main() {
   pixelGrid.onChange( (pix) => {
     server.send('pixel', pix);
   })
-  // pixelGrid.loadData()
-  // .then(function() {
-  //   canvasMgr.draw();
-  // });
 
 
   canvasMgr.scale = 10;
@@ -50,7 +46,15 @@ function main() {
     canvas.height = $canvas.height();
     canvasMgr.draw();
   });
+
+  let $mapButtons = $('#map-selector button');
+  $mapButtons.click(function() {
+    server.send('map', $('#map-selector button').index(this) );
+  });
+
 }
+
+
 
 
 function createButtons() {

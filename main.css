@@ -47,7 +47,7 @@ canvas {
   transform: translateY(-1em);
   transition: all .2s;
 }
-#users {
+.top-right {
   position: fixed;
   top: 0;
   right: 0;

@@ -2,7 +2,7 @@
 
 export class Server {
   constructor(address, port) {
-    this.websocket = new WebSocket(`ws://${address}:${port}/`);
+    this.websocket = new WebSocket(`wss://${address}:${port}/`);
     this.websocket.onmessage = this._onMessage.bind(this);
     this.events = {};
   }
